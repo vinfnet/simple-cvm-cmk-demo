@@ -13,7 +13,7 @@
 
 #set PowerShell variables to use in the script
 $subsid="<YOUR SUBSCRIPTION ID>"
-$basename ="<YOUR ALIAS>" # keep this unique and short < 15 chars as it will determine the length of the VM name, various objects will be created based on this e.g. if you use MyCMV1 you'll get MyCVM1akv, MyCVM1des, MyCVM1-cmk-key, MyCVM1vnet, MyCVM1vnet-ip, MyCVM1vnet-bastion named objects
+$basename ="<YOUR VM NAME>" # keep this unique and short < 15 chars as it will determine the length of the VM name, various objects will be created based on this e.g. if you use MyCMV1 you'll get MyCVM1akv, MyCVM1des, MyCVM1-cmk-key, MyCVM1vnet, MyCVM1vnet-ip, MyCVM1vnet-bastion named objects
 $resgrp=  $basename
 $akvname= $basename + "akv"
 $desname= $basename + "des"
