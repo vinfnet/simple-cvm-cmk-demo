@@ -3,6 +3,7 @@
 #Use at your own risk, no warranties implied
 #based on https://learn.microsoft.com/en-us/azure/confidential-computing/quick-create-confidential-vm-azure-cli
 #Clone this script & adjust the values in <BRACKETS> to suit your environment
+#this is a mix of az cli and powershell
 
 #TODO
 # - add error handling 
