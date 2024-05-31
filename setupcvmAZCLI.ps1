@@ -23,6 +23,8 @@ $vmname=  $basename
 $vnetname=$vmname + "vnet"
 $bastionname= $vnetname + "-bastion"
 $vnetipname=  $vnetname + "-ip"
+$vmusername = "<YOUR USERNAME>" # username for the VM, must be _local for CVM
+$vmadminpassword = "<YOUR ADMIN PASSWORD>" # password for the VM, must be 12 chars or more, complex, and meet Azure password requirements
 
 # Set your Azure subscription, assumes you're already logged in (otherwise do az account login)
 az account set --subscription $subsid
@@ -51,7 +53,7 @@ az keyvault set-policy -n $akvname -g $resgrp --object-id $desIdentity --key-per
 $diskEncryptionSetID=(az disk-encryption-set show -n $desname -g $resgrp --query [id] -o tsv)
 
 #create the VM, finally! note this creates a Windows VM, without a public IP address (you'll access it using Bastion, configured in the next step)
-az vm create --resource-group $resgrp --name $vmname --size Standard_DC4as_v5 --admin-username "<YOUR USERNAME>" --admin-password "<YOUR ADMIN PASSWORD>" --enable-vtpm true --enable-secure-boot true --image "microsoftwindowsserver:windowsserver:2022-datacenter-smalldisk-g2:latest" --public-ip-address "" --security-type ConfidentialVM --os-disk-security-encryption-type DiskWithVMGuestState --os-disk-secure-vm-disk-encryption-set $diskEncryptionSetID 
+az vm create --resource-group $resgrp --name $vmname --size Standard_DC4as_v5 --admin-username $vmusername --admin-password $vmadminpassword --enable-vtpm true --enable-secure-boot true --image "microsoftwindowsserver:windowsserver:2022-datacenter-smalldisk-g2:latest" --public-ip-address "" --security-type ConfidentialVM --os-disk-security-encryption-type DiskWithVMGuestState --os-disk-secure-vm-disk-encryption-set $diskEncryptionSetID 
 
 #enable Bastion for it
 #create a subnet for the bastion
