@@ -85,6 +85,10 @@ $diskEncryptionSetID = (Get-AzDiskEncryptionSet -ResourceGroupName $resgrp -Name
 #need to do this bit in az cli as I'm testing from a Mac, where PowerShell doesn't support the -enablevtpm and secureboot parameters yet
 az vm create --resource-group $resgrp --name $vmname --size Standard_DC4as_v5 --admin-username $vmusername --admin-password $vmadminpassword --enable-vtpm true --enable-secure-boot true --image "microsoftwindowsserver:windowsserver:2022-datacenter-smalldisk-g2:latest" --public-ip-address "" --security-type ConfidentialVM --os-disk-security-encryption-type DiskWithVMGuestState --os-disk-secure-vm-disk-encryption-set $diskEncryptionSetID 
 
+#if you want to create a non-confidential VM for comparison, for example to test attestation use this command instead
+#az vm create --resource-group $resgrp --name ($vmname + "gpvm") --admin-username $vmusername --admin-password $vmadminpassword --os-disk-size-gb 2048 --image "microsoftwindowsserver:windowsserver:2022-datacenter-smalldisk-g2:latest" --vnet-name $vnetname --subnet $vmsubnetName --public-ip-address ""
+
+
 <# 
 this doesn't work on Mac Powershell yet - no support for -enablevtpm and secureboot parameters
 # Create the VM, finally! note this creates a Windows VM, without a public IP address (you'll access it using Bastion, configured in the next step)
