@@ -2,8 +2,9 @@
 #More detailed version https://github.com/Azure/confidential-computing-cvm-guest-attestation/tree/main/cvm-platform-checker-exe
 #and you'll need something to decode the JSON like https://jsonformatter.org/json-parser - or code below uses a community module to decode it
 #TODO replace the AttestationClientApp.exe and do the call inside the PowerShell script rather than using an external (albeit open source) binary
+#No warranty, use at your own risk, etc.
 
-#PowerShellmodule required to decode the JWT token from the attestation service https://github.com/darrenjrobinson/JWTDetails
+#PowerShell module required to decode the JWT token from the attestation service https://github.com/darrenjrobinson/JWTDetails
 install-module -name JWTDetails
 
 Invoke-WebRequest -uri https://github.com/Azure/confidential-computing-cvm-guest-attestation/raw/main/cvm-platform-checker-exe/Windows/cvm_windows_attestation_client.zip -OutFile windowsattestationclient.zip
@@ -13,10 +14,6 @@ cd .\cvm_windows_attestation_client
 .\VC_redist.x64.exe /q /norestart
 start-sleep -Seconds 15 # wait for install to finish - hacky but works
 #TODO loop to check for vcredist registry key
-
-#AttestationClientApp.exe should give 'true' or 'false' for the attestation status, true = is a CVM
-
-
 
 #get the JWT output 
 $attestationJWT = .\AttestationClientApp.exe -a "sharedweu.weu.attest.azure.net" -n "12345" -o token
