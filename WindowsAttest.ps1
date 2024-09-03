@@ -27,8 +27,11 @@ if ($attestationJSON."x-ms-isolation-tee"."x-ms-compliance-status" -eq "azure-co
 else {
     Write-Host "This VM is NOT an Azure compliant CVM"
 }
-# optional - uninstall VC redist afterwards
-# .\VC_redist.x64.exe /u
-
-
-
+# optional - uninstall VC redist and PowerShell module and remove files afterwards
+.\VC_redist.x64.exe /u
+start-sleep -Seconds 15 # wait for install to finish - hacky but works
+ #TODO loop to check for vcredist registry key
+Uninstall-module -name JWTDetails
+cd ..
+remove-item -path .\cvm_windows_attestation_client -Recurse
+remove-item -path .\windowsattestationclient.zip -Recurse
