@@ -3,6 +3,7 @@
 #and you'll need something to decode the JSON like https://jsonformatter.org/json-parser - or code below uses a community module to decode it
 #TODO replace the AttestationClientApp.exe and do the call inside the PowerShell script rather than using an external (albeit open source) binary
 #No warranty, use at your own risk, etc.
+# Requires access to the Internet to download the attestation client, attest and install a PowerShell module
 
 #PowerShell module required to decode the JWT token from the attestation service https://github.com/darrenjrobinson/JWTDetails
 install-module -name JWTDetails
@@ -22,16 +23,18 @@ Write-Host "This " $attestationJSON."x-ms-azurevm-ostype" " OS is running on " $
 
 if ($attestationJSON."x-ms-isolation-tee"."x-ms-compliance-status" -eq "azure-compliant-cvm") 
 {
-    Write-Host "This VM is an Azure compliant CVM attested by " $attestationJSON.iss
+    Write-Host "This VM is an Azure compliant CVM attested by " $attestationJSON.iss -ForegroundColor Green
 }
 else {
-    Write-Host "This VM is NOT an Azure compliant CVM"
+    Write-Host "This VM is NOT an Azure compliant CVM" -ForegroundColor Red
 }
 # optional - uninstall VC redist and PowerShell module and remove files afterwards
-.\VC_redist.x64.exe /u
+Write-Host "Cleaning up"
+.\VC_redist.x64.exe /u /q /norestart
 start-sleep -Seconds 15 # wait for install to finish - hacky but works
  #TODO loop to check for vcredist registry key
 Uninstall-module -name JWTDetails
 cd ..
 remove-item -path .\cvm_windows_attestation_client -Recurse
 remove-item -path .\windowsattestationclient.zip -Recurse
+Write-Host "Finished"
