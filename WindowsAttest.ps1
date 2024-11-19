@@ -1,11 +1,14 @@
 #.WinGuestAttestation.ps1 v2
 # Simon Gallagher, Microsoft https://github.com/vinfnet
 # NO warranties implied, use at your own risk
-#Script to run on a Confidential Virtual machine (https://aka.ms/accdocs) to check if it is running on a Confidential VM (CVM) and attested by Azure Attestation service
-#More detailed version https://github.com/Azure/confidential-computing-cvm-guest-attestation/tree/main/cvm-platform-checker-exe
-#it will download a sample app from GitHub to get the JWT token from the attestation service and decode it
-#it will install + uninstall dependencies like VC Redist and JWTDetails (https://github.com/darrenjrobinson/JWTDetails) PowerShell module
+# Review and customize code before running in your environment
+# Script to run on a Confidential Virtual machine (https://aka.ms/accdocs) to check if it is running on a Confidential VM (CVM) and attested by Azure Attestation service
+# More detailed version https://github.com/Azure/confidential-computing-cvm-guest-attestation/tree/main/cvm-platform-checker-exe
+# it will download a sample app from GitHub to get the JWT token from the attestation service and decode it
+# it will install + uninstall dependencies like VC Redist and JWTDetails (https://github.com/darrenjrobinson/JWTDetails) PowerShell module
 
+#force install of NuGet provider, otherwise script prompts for install on a 'fresh' VM
+Install-PackageProvider -Name NuGet -force
 write-output "Installing JWTDetails module"
 install-module -name JWTDetails -Force
 write-output "Downloading attestation client binaries"
