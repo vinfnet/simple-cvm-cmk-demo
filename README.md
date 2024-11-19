@@ -15,15 +15,17 @@ The WindowsAttest.ps1 script can be invoked inside a CVM to do an attestation ch
 Expected output:
 
 Running on a CVM (DCa / ECa Series SKU using AMD SEV-SNP hardware)
-    This  Windows  OS is running on  sevsnpvm VM hardware
-    This VM is an Azure compliant CVM attested by  https://sharedweu.weu.attest.azure.net
+>    This  Windows  OS is running on  sevsnpvm VM hardware
+>    This VM is an Azure compliant CVM attested by  https://sharedweu.weu.attest.azure.net
 
 NOT running on a CVM (any other Azure SKU)
-    This VM is NOT an Azure compliant CVM
+>    This VM is NOT an Azure compliant CVM
 
 
 You can download the script to a CVM or execute directly from GitHub from your CVM by pasting the following single line Command in a PowerShell session
 
+'''
 $ScriptFromGitHub = Invoke-WebRequest -uri https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/refs/heads/main/WindowsAttest.ps1 ; Invoke-Expression $($ScriptFromGitHub.Content)
+'''
 
 For more information on Azure confidential Computing see the [public docs](https//aka.ms/accdocs)
