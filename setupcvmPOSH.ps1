@@ -32,7 +32,7 @@ $vmsubnetname = $basename + "vmsubnet" # don't change this
 $region = "northeurope" #oops - missed this
 
 # Powershell login
-Connect-AzAccount -SubscriptionId $subsid -Tenant <YOUR_ENTRA_TENANT>.onmicrosoft.com
+Connect-AzAccount -SubscriptionId $subsid -Tenant <YOUR_ENTRA_TENANT>.onmicrosoft.com # replace with your tenant
 
 # AZCLI login Set your Azure subscription
 Set-AzContext -SubscriptionId $subsid
