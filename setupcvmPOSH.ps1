@@ -31,11 +31,15 @@ $bastionsubnetName = "AzureBastionSubnet" # don't change this
 $vmsubnetname = $basename + "vmsubnet" # don't change this
 $region = "northeurope" #oops - missed this
 
+#Interactive login for PowerShell and AZCLI (both required) - comment out if you're already logged in
+
 # Powershell login
-Connect-AzAccount -SubscriptionId $subsid -Tenant <YOUR_ENTRA_TENANT>.onmicrosoft.com # replace with your tenant
+Connect-AzAccount -SubscriptionId $subsid -Tenant <YOUR ENTRA TENANT>.onmicrosoft.com
+Set-AzContext -SubscriptionId $subsid -TenantId <YOUR ENTRA TENANT>.onmicrosoft.com
 
 # AZCLI login Set your Azure subscription
-Set-AzContext -SubscriptionId $subsid
+az login --tenant <YOUR ENTRA TENANT>.onmicrosoft.com  
+az account set --subscription $subsid #will ensure the correct subscription is chosen if you have access to multiple
 
 # Create a resource group and tag it with the owner (so all resources inherit tag)
 New-AzResourceGroup -Name $resgrp -Location $region -Tag @{owner=$ownername}
