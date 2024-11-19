@@ -24,8 +24,8 @@ NOT running on a CVM (any other Azure SKU)
 
 You can download the script to a CVM or execute directly from GitHub from your CVM by pasting the following single line Command in a PowerShell session
 
-'''
+```
 $ScriptFromGitHub = Invoke-WebRequest -uri https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/refs/heads/main/WindowsAttest.ps1 ; Invoke-Expression $($ScriptFromGitHub.Content)
-'''
+```
 
 For more information on Azure confidential Computing see the [public docs](https//aka.ms/accdocs)
