@@ -22,7 +22,7 @@ NOT running on a CVM (any other Azure SKU)
 >    This VM is NOT an Azure compliant CVM
 
 
-You can download the script to a CVM or execute directly from GitHub from your CVM by pasting the following single line Command in a PowerShell session
+You can download the script to a CVM or execute directly from GitHub from your CVM by pasting the following single line Command in a PowerShell session that is running with Administrative permissions (review the script 1st to ensure you are happy with the binaries and packages it installs or download & customize)
 
 ```
 $ScriptFromGitHub = Invoke-WebRequest -uri https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/refs/heads/main/WindowsAttest.ps1 ; Invoke-Expression $($ScriptFromGitHub.Content)
