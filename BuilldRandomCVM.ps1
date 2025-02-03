@@ -8,6 +8,25 @@
 # You'll need to have the latest Azure PowerShell module installed as older versions don't have the parameters for AKV & ACC (update-module -force)
 
 
+# Set PowerShell variables to use in the script
+$subsid = "<YOUR SUBSCRIPTION ID>"
+$basename = "<YOUR ID>" # keep this unique and short <= 5 chars as it will determine the length of the VM name, various objects will be created based on this e.g. if you use MyCMV1 you'll get MyCVM1akv, MyCVM1des, MyCVM1-cmk-key, MyCVM1vnet, MyCVM1vnet-ip, MyCVM1vnet-bastion named objects
+$vmusername = "<YOUR USER NAME>" # username for the VM, must be _local for CVM
+$vmadminpassword = -join ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%".ToCharArray() | Get-Random -Count 40) # build a random password - note you can't get it back afterwards
+$ownername = "<YOUR ALIAS>" #used to set the owner tag value on the resouce group
+$resgrp =  $basename # nmame of the resource group where all resources will be created, copied from $basename
+$akvname = $basename + "akv"
+$desname = $basename + "des"
+$keyname = $basename + "-cmk-key"
+$vmname = $basename # name of the VM, copied from $basename, or customise it here
+$vnetname = $vmname + "vnet"
+$bastionname = $vnetname + "-bastion"
+$vnetipname = $vnetname + "-ip"
+$bastionsubnetName = "AzureBastionSubnet" # don't change this
+$vmsubnetname = $basename + "vmsubnet" # don't change this
+$region = "northeurope" #oops - missed this
+$entra_tenant = "<YOUR ENTRA TENANT>.onmicrosoft.com" # your tenant ID - will always end in .onmicrosoft.com
+
 write-host "----------------------------------------------------------------------------------------------------------------"
 write-host "Building a server in " $basename " in " $region
 write-host "IMPORTANT, randomly generated passsword for the VM is " $vmadminpassword " - save this as you CANNOT retrieve it later"
