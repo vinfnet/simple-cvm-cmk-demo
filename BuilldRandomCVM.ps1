@@ -8,24 +8,6 @@
 # You'll need to have the latest Azure PowerShell module installed as older versions don't have the parameters for AKV & ACC (update-module -force)
 
 
-# Set PowerShell variables to use in the script
-$subsid = "<YOUR SUBSCRIPTION ID>"
-$basename = "<YOUR ID>" # keep this unique and short < 15 chars as it will determine the length of the VM name, various objects will be created based on this e.g. if you use MyCMV1 you'll get MyCVM1akv, MyCVM1des, MyCVM1-cmk-key, MyCVM1vnet, MyCVM1vnet-ip, MyCVM1vnet-bastion named objects
-$vmusername = "<YOUR USER NAME>" # username for the VM, must be _local for CVM
-$vmadminpassword = -join ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%".ToCharArray() | Get-Random -Count 40) # build a random password - note you can't get it back afterwards
-$ownername = "<YOUR ALIAS>" #used to set the owner tag value on the resouce group
-$resgrp =  $basename # nmame of the resource group where all resources will be created, copied from $basename
-$akvname = $basename + "akv"
-$desname = $basename + "des"
-$keyname = $basename + "-cmk-key"
-$vmname = $basename # name of the VM, copied from $basename, or customise it here
-$vnetname = $vmname + "vnet"
-$bastionname = $vnetname + "-bastion"
-$vnetipname = $vnetname + "-ip"
-$bastionsubnetName = "AzureBastionSubnet" # don't change this
-$vmsubnetname = $basename + "vmsubnet" # don't change this
-$region = "northeurope" #oops - missed this
-
 write-host "----------------------------------------------------------------------------------------------------------------"
 write-host "Building a server in " $basename " in " $region
 write-host "IMPORTANT, randomly generated passsword for the VM is " $vmadminpassword " - save this as you CANNOT retrieve it later"
@@ -34,11 +16,11 @@ write-host "--------------------------------------------------------------------
 #Interactive login for PowerShell and AZCLI (both required) - comment out if you're already logged in
 
 # Powershell login
-Connect-AzAccount -SubscriptionId $subsid -Tenant <YOUR ENTRA TENANT>.onmicrosoft.com
-Set-AzContext -SubscriptionId $subsid -TenantId <YOUR ENTRA TENANT>.onmicrosoft.com
+Connect-AzAccount -SubscriptionId $subsid -Tenant $entra_tenant
+Set-AzContext -SubscriptionId $subsid -TenantId $entra_tenant
 
 # AZCLI login Set your Azure subscription
-az login --tenant <YOUR ENTRA TENANT>.onmicrosoft.com  
+az login --tenant $entra_tenant
 az account set --subscription $subsid #will ensure the correct subscription is chosen if you have access to multiple
 
 # Create a resource group and tag it with the owner (so all resources inherit tag)
@@ -101,7 +83,9 @@ New-AzBastion -ResourceGroupName $resgrp -Name $bastionname -PublicIpAddressRgNa
 #---------Do attestation check, kick off a script inside the VM to do the attestation check---------
 
 # Invoke the command on the VM, using the local file
+write-host "Running an attestation check inside the VM, please wait for output..."
 $output = Invoke-AzVMRunCommand -Name $vmname -ResourceGroupName $resgrp -CommandId 'RunPowerShellScript' -ScriptPath .\WindowsAttest.ps1
-write-host "Output from the script that ran inside the VM:"
+write-host "--------------Output from the script that ran inside the VM--------------"
 write-host $output.Value.message # repeat the output from the script that ran inside the VM
+write-host "----------------------------------------------------------------------------------------------------------------"
 write-host "Build and validation complete, check the output above for the attestation status."
