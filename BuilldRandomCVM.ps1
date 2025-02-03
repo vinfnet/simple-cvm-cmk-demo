@@ -86,7 +86,7 @@ New-AzVirtualNetwork -Name $vnetname -ResourceGroupName $resgrp -Location $regio
 
 #Create CVM
 az vm create --resource-group $resgrp --name ($vmname) --size Standard_DC4as_v5 --admin-username $vmusername --admin-password $vmadminpassword --enable-vtpm true --enable-secure-boot true --image "microsoftwindowsserver:windowsserver:2022-datacenter-smalldisk-g2:latest" --vnet-name $vnetname --subnet $vmsubnetName --public-ip-address '""' --security-type ConfidentialVM --os-disk-security-encryption-type DiskWithVMGuestState --os-disk-secure-vm-disk-encryption-set $diskEncryptionSetID
-# note special escaping on "" to pass a null value for the public IP address to work on Mac & Windows PowerShell
+# note special escaping on --public-ip-address to pass a null value for the public IP address to work on AZ CLI in PowerShell, if you need to use on MacOS change this to --public-ip-address '' will fix this by moving all the AZ CLI code to PowerShell
 
 # Enable Bastion for the VM you created
 
