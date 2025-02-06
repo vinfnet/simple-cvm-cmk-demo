@@ -1,106 +1,144 @@
-# Script to build a windows CVM and then make it do attestation by automating an attestation process /inside/ the VM
-# Feb 2025, now creates a randomly suffixed CVM and sets a random password
-# Quick & dirty demo PowerShell script that makes Azure PowerShell module calls to do most of the heavy-lifting for creating a CVM with a CMK
+# Hands-off script to build a windows CVM and then make it do attestation by automating an attestation process /inside/ the VM
+# VM will be created in a private vnet with no public IP and can only be accessed over the Internet via the Azure Bastion service
+# Feb 2024 - ported to all native PowerShell code and re-implemented Azure Bastion code and added command line parameters rather than editing file
+# Tested on MacOS (PWSH 7.5) & Windows (7.4.6)
+# 
 # Simon Gallagher, ACC Product Group
 # Use at your own risk, no warranties implied, test in a non-production environment first
 # based on https://learn.microsoft.com/en-us/azure/confidential-computing/quick-create-confidential-vm-azure-cli
-# Clone this script & adjust the values in <BRACKETS> to suit your environment
+# 
+# Clone this repo to a folder (relies on the WindowsAttest.ps1 script being in the same folder as this script)
+#
+# Usage: ./BuildRandomCVM.ps1 -subsID <YOUR SUBSCRIPTION ID> -basename <YOUR BASENAME>
+#
+# Basename is a prefix for all resources created, it's used to create unique names for the resources
+#
 # You'll need to have the latest Azure PowerShell module installed as older versions don't have the parameters for AKV & ACC (update-module -force)
+#
+
+# TODO
+# - look at the credential handling, it's not optimal
+
+# handle command line parameters, mandatory, will force you to enter them
+param ([Parameter(Mandatory)]$subsID,[Parameter(Mandatory)]$basename)
+
+if ($subsID -eq "" -or $basename -eq "") {
+    write-host "You must enter a subscription ID and a basename"
+    exit
+}# exit if either of the parameters are empty
 
 
 # Set PowerShell variables to use in the script
-$subsid = "<YOUR SUBSCRIPTION ID>"
-$basename = "<YOUR ID>" # keep this unique and short <= 5 chars as it will determine the length of the VM name, various objects will be created based on this e.g. if you use MyCMV1 you'll get MyCVM1akv, MyCVM1des, MyCVM1-cmk-key, MyCVM1vnet, MyCVM1vnet-ip, MyCVM1vnet-bastion named objects
-$vmusername = "<YOUR USER NAME>" # username for the VM, must be _local for CVM
+$basename = $basename + -join ((97..122) | Get-Random -Count 5 | % {[char]$_}) # basename + 5 random lower-case letters
+$vmusername = "azureuser" # you can adjust this if you want
 $vmadminpassword = -join ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%".ToCharArray() | Get-Random -Count 40) # build a random password - note you can't get it back afterwards
-$ownername = "<YOUR ALIAS>" #used to set the owner tag value on the resouce group
-$resgrp =  $basename # nmame of the resource group where all resources will be created, copied from $basename
-$akvname = $basename + "akv"
-$desname = $basename + "des"
-$keyname = $basename + "-cmk-key"
+$resgrp =  $basename # name of the resource group where all resources will be created, copied from $basename
+$akvname = $basename + "akv"    #Name of the Azure Key Vault
+$desname = $basename + "des"    #Name of the Disk Encryption Set
+$keyname = $basename + "-cmk-key" #Name of the key in the Key Vault
 $vmname = $basename # name of the VM, copied from $basename, or customise it here
-$vnetname = $vmname + "vnet"
-$bastionname = $vnetname + "-bastion"
-$vnetipname = $vnetname + "-ip"
+$vnetname = $vmname + "vnet" # name of the VNET
+$bastionname = $vnetname + "-bastion" # name of the bastion host
+$vnetipname = $vnetname + "-pip"     #Name of the VNET IP
+$nicPrefix = $basename + "-nic"    #Name of the NIC
 $bastionsubnetName = "AzureBastionSubnet" # don't change this
 $vmsubnetname = $basename + "vmsubnet" # don't change this
-$region = "northeurope" #oops - missed this
-$entra_tenant = "<YOUR ENTRA TENANT>.onmicrosoft.com" # your tenant ID - will always end in .onmicrosoft.com
-
+$region = "northeurope" #Makesure the region is supported for ACC
+$vmSize = "Standard_DC2as_v5"; #Note AMD SEV-SNP based SKUs are DCa and ECa series VMs (Big 'C' for Confidential, small 'a' for AMD)
+$identityType = "SystemAssigned";
+$secureEncryptGuestState = "DiskWithVMGuestState";
+$vmSecurityType = "ConfidentialVM";
+$KeySize = 3072
+$diskEncryptionType = "ConfidentialVmEncryptedWithCustomerKey";
 write-host "----------------------------------------------------------------------------------------------------------------"
-write-host "Building a server in " $basename " in " $region
-write-host "IMPORTANT, randomly generated passsword for the VM is " $vmadminpassword " - save this as you CANNOT retrieve it later"
+write-host "Building a Confidential Virtual Machine in " $basename " in " $region
+write-host "IMPORTANT"
+write-host "VM admin username is " $vmusername
+write-host "randomly generated passsword for the VM is " $vmadminpassword " - save this now as you CANNOT retrieve it later"
 write-host "----------------------------------------------------------------------------------------------------------------"
 
-#Interactive login for PowerShell and AZCLI (both required) - comment out if you're already logged in
+#Interactive login for PowerShell - uncomment if you want the script to prompt you
+#If you are not logged in, or dont have the correct subscription selected you will need to do so 1st
+#Connect-AzAccount -SubscriptionId $subsid -Tenant <ADD TENANT ID>
 
-# Powershell login
-Connect-AzAccount -SubscriptionId $subsid -Tenant $entra_tenant
-Set-AzContext -SubscriptionId $subsid -TenantId $entra_tenant
+Set-AzContext -SubscriptionId $subsid
+if (!$?) {
+    write-host "Failed to connect to the Azure subscription " $subsid " extiting"
+    exit
+}
 
-# AZCLI login Set your Azure subscription
-az login --tenant $entra_tenant
-az account set --subscription $subsid #will ensure the correct subscription is chosen if you have access to multiple
+#Get username of logged-in Azure user so we can tag the resource group with it
+$tmp = Get-AzContext
+$ownername = $tmp.Account.Id
 
-# Create a resource group and tag it with the owner (so all resources inherit tag)
-New-AzResourceGroup -Name $resgrp -Location $region -Tag @{owner=$ownername}
+# Create Resource Group
 
-# Create AKV premium instance, note it has purge protection enabled, but will only retain for _10_ days - adjust this for production usage! -enablesoftdelete is default now (-disablerbacauthorization _required_)
-New-AzKeyVault -VaultName $akvname -ResourceGroupName $resgrp -Location $region -Sku "premium" -EnablePurgeProtection -SoftDeleteRetentionInDays 10 -DisableRbacAuthorization
+New-AzResourceGroup -Name $resgrp -Location $region -Tag @{owner=$ownername} -force
 
-# Grab the CVM agent ID for your tenant
-$cvmAgent = Get-AzADServicePrincipal -ApplicationId bf7b6499-ff71-4aa2-97a4-f372087be7f0
+#create a credential object
+$securePassword = ConvertTo-SecureString -String $vmadminpassword -AsPlainText -Force # this could probably be done better inline rather than via a variable
+$cred = New-Object System.Management.Automation.PSCredential ($vmusername, $securePassword);
 
-# Grant it ability to get keys from the AKV
-Set-AzKeyVaultAccessPolicy -VaultName $akvname -ObjectId $cvmAgent.Id -PermissionsToKeys "get", "release"
+# Create Key Vault
+New-AzKeyVault -Name $akvname -Location $region -ResourceGroupName $resgrp -Sku Premium -EnabledForDiskEncryption -DisableRbacAuthorization -SoftDeleteRetentionInDays 10 -EnablePurgeProtection;
 
-start-sleep 10 # wait for the AKV policy to be created, it's async and takes a few seconds, otherwise following command can fail intermittently
+$cvmAgent = Get-AzADServicePrincipal -ApplicationId 'bf7b6499-ff71-4aa2-97a4-f372087be7f0';
+Set-AzKeyVaultAccessPolicy -VaultName $akvname -ResourceGroupName $resgrp -ObjectId $cvmAgent.id -PermissionsToKeys get,release;
 
-# Create a CMK key in the AKV, note RSA-HSM
-#translated $key = Add-AzKeyVaultKey -VaultName $akvname -Name $keyname -Destination "Software" -KeyType "RSA-HSM" -KeyOps @{'wrapKey','unwrapKey','get'}
-#hacked up version of the above command to work in POSH
-$key = Add-AzKeyVaultKey -VaultName $akvName -Name $keyname -Size 2048 -KeyOps wrapKey,unwrapKey -KeyType RSA -Destination HSM -Exportable -UseDefaultCVMPolicy;
+# Add Key vault Key
+Add-AzKeyVaultKey -VaultName $akvname -Name $KeyName -Size $KeySize -KeyOps wrapKey,unwrapKey -KeyType RSA -Destination HSM -Exportable -UseDefaultCVMPolicy;
+        
+# Capture Key Vault and Key details
+$encryptionKeyVaultId = (Get-AzKeyVault -VaultName $akvname -ResourceGroupName $resgrp).ResourceId;
+$encryptionKeyURL = (Get-AzKeyVaultKey -VaultName $akvname -KeyName $keyName).Key.Kid;
 
-# Find the key URL (https://<akvname>.vault.azure.net/keys/<keyname>/<keyversion>)
-$keyVaultKeyUrl = $key.Key.Kid
+# Create new DES Config and Disk Encryption Set
+$desConfig = New-AzDiskEncryptionSetConfig -Location $region -SourceVaultId $encryptionKeyVaultId -KeyUrl $encryptionKeyURL -IdentityType SystemAssigned -EncryptionType $diskEncryptionType;
+New-AzDiskEncryptionSet -ResourceGroupName $resgrp -Name $desName -DiskEncryptionSet $desConfig;
+        
+$diskencset = Get-AzDiskEncryptionSet -ResourceGroupName $resgrp -Name $desName;
+        
+# Assign DES Access Policy to key vault
+$desIdentity = (Get-AzDiskEncryptionSet -Name $desName -ResourceGroupName $resgrp).Identity.PrincipalId;
+        
+Set-AzKeyVaultAccessPolicy -VaultName $akvname -ResourceGroupName $resgrp -ObjectId $desIdentity -PermissionsToKeys wrapKey,unwrapKey,get -BypassObjectIdValidation;
+        
+$VirtualMachine = New-AzVMConfig -VMName $VMName -VMSize $vmSize;
+$VirtualMachine = Set-AzVMOperatingSystem -VM $VirtualMachine -Windows -ComputerName $vmname -Credential $cred -ProvisionVMAgent -EnableAutoUpdate;
+$VirtualMachine = Set-AzVMSourceImage -VM $VirtualMachine -PublisherName 'MicrosoftWindowsServer' -Offer 'windowsserver' -Skus '2022-datacenter-smalldisk-g2' -Version "latest";
+        
+$subnet = New-AzVirtualNetworkSubnetConfig -Name ($vmsubnetName) -AddressPrefix "10.0.0.0/24";
+$vnet = New-AzVirtualNetwork -Force -Name ($vnetname) -ResourceGroupName $resgrp -Location $region -AddressPrefix "10.0.0.0/16" -Subnet $subnet;
+$vnet = Get-AzVirtualNetwork -Name ($vnetname) -ResourceGroupName $resgrp;
+$subnetId = $vnet.Subnets[0].Id;
+#uncomment the below if you want to add a public IP address to the VM
+#$pubip = New-AzPublicIpAddress -Force -Name ($pubIpPrefix + $resgrp) -ResourceGroupName $resgrp -Location $region -AllocationMethod Static -DomainNameLabel $domainNameLabel2;
+#$pubip = Get-AzPublicIpAddress -Name ($pubIpPrefix + $resgrp) -ResourceGroupName $resgrp;
+#$pubipId = $pubip.Id;
 
-#have to cheat and use az cli for this bit as it's not supported in PowerShell yet as far as I could figure
-#Create disk encryption set with the key - note --encryption-type ConfidentialVmEncryptedWithCustomerKey
-az disk-encryption-set create --resource-group $resgrp --name $desname --key-url $keyVaultKeyUrl --encryption-type ConfidentialVmEncryptedWithCustomerKey
+$nic = New-AzNetworkInterface -Force -Name ($nicPrefix) -ResourceGroupName $resgrp -Location $region -SubnetId $subnetId #-PublicIpAddressId $pubip.Id;
+$nic = Get-AzNetworkInterface -Name ($nicPrefix) -ResourceGroupName $resgrp;
+$nicId = $nic.Id;
 
-# Get MI of the disk encryption set
-$desIdentity = Get-AzDiskEncryptionSet -ResourceGroupName $resgrp -Name $desname | Select-Object -ExpandProperty Identity
+$VirtualMachine = Add-AzVMNetworkInterface -VM $VirtualMachine -Id $nicId;
 
-start-sleep -seconds 30 # wait for the MI to be created, it's async and takes a few seconds, otherwise following command can fail intermittently
+# Set VM SecurityType and connect to DES
+$VirtualMachine = Set-AzVMOSDisk -VM $VirtualMachine -StorageAccountType "StandardSSD_LRS" -CreateOption "FromImage" -SecurityEncryptionType $secureEncryptGuestState -SecureVMDiskEncryptionSet $diskencset.Id;
+$VirtualMachine = Set-AzVmSecurityProfile -VM $VirtualMachine -SecurityType $vmSecurityType;
+$VirtualMachine = Set-AzVmUefi -VM $VirtualMachine -EnableVtpm $true -EnableSecureBoot $true;
+$VirtualMachine = Set-AzVMBootDiagnostic -VM $VirtualMachine -disable #disable boot diagnostics, you can re-enable if required
 
-# Grant MI ability to get keys from the AKV
-Set-AzKeyVaultAccessPolicy -VaultName $akvname -ResourceGroupName $resgrp -ObjectId $desIdentity.PrincipalId -PermissionsToKeys "wrapKey", "unwrapKey", "get"
+New-AzVM -ResourceGroupName $resgrp -Location $region -Vm $VirtualMachine;
+$vm = Get-AzVm -ResourceGroupName $resgrp -Name $vmname;
 
-# Get id of the disk encryption set
-$diskEncryptionSetID = (Get-AzDiskEncryptionSet -ResourceGroupName $resgrp -Name $desname).Id
+# Create the Bastion to allow accesing the VM via the Azure portal
+write-host "VM created, now enabling Bastion for the VM"
+$vnet = Get-AzVirtualNetwork -Name $vnetname -ResourceGroupName $resgrp
+Add-AzVirtualNetworkSubnetConfig -Name "AzureBastionSubnet" -VirtualNetwork $vnet -AddressPrefix "10.0.99.0/26" | Set-AzVirtualNetwork # you can make this subnet anything you like as long as it fits into the vnet address space
+$publicip = New-AzPublicIpAddress -ResourceGroupName $resgrp -name "VNet1-ip" -location $region -AllocationMethod Static -Sku Standard
+New-AzBastion -ResourceGroupName $resgrp -Name $bastionname -PublicIpAddressRgName $resgrp -PublicIpAddressName $publicIp.Name -VirtualNetworkRgName $resgrp -VirtualNetworkName $vnetname -Sku "Basic"
 
-#create network 
-$vmsubnet = New-AzVirtualNetworkSubnetConfig -Name $vmsubnetname -AddressPrefix "10.0.1.0/24"
-$bastionsubnet  = New-AzVirtualNetworkSubnetConfig -Name $bastionsubnetName  -AddressPrefix "10.0.2.0/24"
-New-AzVirtualNetwork -Name $vnetname -ResourceGroupName $resgrp -Location $region -AddressPrefix "10.0.0.0/16" -Subnet $vmsubnet, $bastionsubnet
-
-#Create CVM
-az vm create --resource-group $resgrp --name ($vmname) --size Standard_DC4as_v5 --admin-username $vmusername --admin-password $vmadminpassword --enable-vtpm true --enable-secure-boot true --image "microsoftwindowsserver:windowsserver:2022-datacenter-smalldisk-g2:latest" --vnet-name $vnetname --subnet $vmsubnetName --public-ip-address '""' --security-type ConfidentialVM --os-disk-security-encryption-type DiskWithVMGuestState --os-disk-secure-vm-disk-encryption-set $diskEncryptionSetID
-# note special escaping on --public-ip-address to pass a null value for the public IP address to work on AZ CLI in PowerShell, if you need to use on MacOS change this to --public-ip-address '' will fix this by moving all the AZ CLI code to PowerShell
-
-# Enable Bastion for the VM you created
-
-# Get the virtual network - we only enable bastion for the server - can RDP to the client from it if required
-$vnet = Get-AzVirtualNetwork -ResourceGroupName $resgrp -Name ($vnetname)
-
-# Create a public IP for the bastion host
-$publicIp = New-AzPublicIpAddress -ResourceGroupName $resgrp -Location $vnet.Location -Name $vnetipname -AllocationMethod Static -Sku Standard
-
-# Create the bastion host
-New-AzBastion -ResourceGroupName $resgrp -Name $bastionname -PublicIpAddressRgName $resgrp -PublicIpAddressName $vnetipname -VirtualNetworkRgName $resgrp -VirtualNetworkName $vnetname #-Sku "Basic"
-
-#---------Do attestation check, kick off a script inside the VM to do the attestation check---------
-
+#---------Do attestation check, kick off a script inside the VM to do the attestation check, note script is pulled from directory where this script is executed from---------
 # Invoke the command on the VM, using the local file
 write-host "Running an attestation check inside the VM, please wait for output..."
 $output = Invoke-AzVMRunCommand -Name $vmname -ResourceGroupName $resgrp -CommandId 'RunPowerShellScript' -ScriptPath .\WindowsAttest.ps1

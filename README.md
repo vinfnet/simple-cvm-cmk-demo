@@ -1,16 +1,26 @@
-Quick & dirty demo Powershell script that makes az cli calls to do most of the heavy-lifting for creating a CVM with a CMK
+BuildRandomCVM.ps1 will build a CVM with Customer Managed Key, Confidential Disk Encryption, a private VNet (no public IP) and deploy Azure Bastion for RDP access over the Internet. It will then kick off an attestation inside the CVM and present back the output (see WindowsAttest.ps1 for details) via Invoke-AzVMRunCommand
 
 Use at your own risk, no warranties implied
 
-Based on https://learn.microsoft.com/en-us/azure/confidential-computing/quick-create-confidential-vm-azure-cli 
+Based on https://learn.microsoft.com/en-us/azure/confidential-computing/quick-create-confidential-vm-azure-cli and https://aka.ms/accdocs resources
 
-Clone this script & adjust the values in < BRACKETS > to suit your environment
+Usage: 
+Git clone this repo locally (subsequent script depends on WindowsAttest.ps1)
+Basename is a prefix assigned to all resources created by the script and will be given a 5 char suffix - for example : myCVM-sdfrw
+The script will generate a random complex password and output it to the terminal once, make sure you copy it if you want to login to the CVM
 
-Note this will deploy an Azure Keyvault *Premium* SKU [pricing](https://azure.microsoft.com/en-gb/pricing/details/key-vault/#pricing) & enables purge protection for 10 days
+```
+./BuildRandomCVM.ps1 -subsID <YOUR SUBSCRIPTION ID> -basename <YOUR BASENAME>
+```
+Note this will deploy an Azure Keyvault *Premium* SKU [pricing](https://azure.microsoft.com/en-gb/pricing/details/key-vault/#pricing) & enables purge protection for 10 days (you can adjust the purge protection period but AKV Premium is required for CVMs with confidential disk encryption
+
+-----------------------------------------------------------------------------------------------------------
+
+setupcvmAZCLI.ps1 and setupCVMPOSH.ps1 also still work but are less mature than BuildRandomCVM.ps1.
 
 Once you've deployed you can install the [simple attestation client](https://github.com/Azure/confidential-computing-cvm-guest-attestation/blob/main/cvm-platform-checker-exe/README.md) install the VC runtime 1st! to see true/false if your VM is protected by Azure Confidential Computing
 
-The WindowsAttest.ps1 script can be invoked inside a CVM to do an attestation check against the West Europe shared attestation endpoint
+The WindowsAttest.ps1 script can manually be invoked inside a CVM to do an attestation check against the West Europe shared attestation endpoint
 
 Expected output:
 
