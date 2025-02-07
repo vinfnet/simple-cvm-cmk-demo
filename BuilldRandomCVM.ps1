@@ -146,3 +146,7 @@ write-host "--------------Output from the script that ran inside the VM---------
 write-host $output.Value.message # repeat the output from the script that ran inside the VM
 write-host "----------------------------------------------------------------------------------------------------------------"
 write-host "Build and validation complete, check the output above for the attestation status."
+
+#optional - uncomment the following if you want to automatically remove the VM after the attestation check
+#get-azresourceGroup -name $resgrp | Remove-AzResourceGroup   
+
