@@ -82,6 +82,10 @@ $cred = New-Object System.Management.Automation.PSCredential ($vmusername, $secu
 # Create Key Vault
 New-AzKeyVault -Name $akvname -Location $region -ResourceGroupName $resgrp -Sku Premium -EnabledForDiskEncryption -DisableRbacAuthorization -SoftDeleteRetentionInDays 10 -EnablePurgeProtection;
 
+#TO DO - if the SP hasn't been created in this tenant yet - break here, or prompt to create it (code as follows)
+#Connect-Graph -Tenant "your tenant ID" Application.ReadWrite.All
+#New-MgServicePrincipal -AppId bf7b6499-ff71-4aa2-97a4-f372087be7f0 -DisplayName "Confidential VM Orchestrator"
+
 $cvmAgent = Get-AzADServicePrincipal -ApplicationId 'bf7b6499-ff71-4aa2-97a4-f372087be7f0';
 Set-AzKeyVaultAccessPolicy -VaultName $akvname -ResourceGroupName $resgrp -ObjectId $cvmAgent.id -PermissionsToKeys get,release;
 

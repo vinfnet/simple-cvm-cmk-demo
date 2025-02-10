@@ -14,6 +14,8 @@ The script will generate a random complex password and output it to the terminal
 ```
 Note this will deploy an Azure Keyvault *Premium* SKU [pricing](https://azure.microsoft.com/en-gb/pricing/details/key-vault/#pricing) & enables purge protection for 10 days (you can adjust the purge protection period but AKV Premium is required for CVMs with confidential disk encryption
 
+By default the script will create a resource in North Europe - adjust the $region parameter in the parameter block at the start for alternative regions - check availability of CVMs in that region 1st
+
 -----------------------------------------------------------------------------------------------------------
 
 setupcvmAZCLI.ps1 and setupCVMPOSH.ps1 also still work but are less mature than BuildRandomCVM.ps1.
