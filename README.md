@@ -1,3 +1,5 @@
+# PowerShell Build Scripts
+
 BuildRandomCVM.ps1 will build a CVM with Customer Managed Key, Confidential Disk Encryption, a private VNet (no public IP) and deploy Azure Bastion for RDP access over the Internet. It will then kick off an attestation inside the CVM and present back the output (see WindowsAttest.ps1 for details) via Invoke-AzVMRunCommand
 
 Use at your own risk, no warranties implied
@@ -15,6 +17,8 @@ The script will generate a random complex password and output it to the terminal
 Note this will deploy an Azure Keyvault *Premium* SKU [pricing](https://azure.microsoft.com/en-gb/pricing/details/key-vault/#pricing) & enables purge protection for 10 days (you can adjust the purge protection period but AKV Premium is required for CVMs with confidential disk encryption
 
 By default the script will create a resource in North Europe - adjust the $region parameter in the parameter block at the start for alternative regions - check availability of CVMs in that region 1st
+
+There is a similar concept to build an AKS cluster with CMK enabled on the worker nodes.
 
 # ARM Template
 Create a simple CVM with CMK enabled (work-in-progress)
