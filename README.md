@@ -27,6 +27,8 @@ You'll need to create a disk encryption set and encryption key (use Azure Keyvau
 
 To deploy from the command line:
 
+New-AzResourceGroupDeployment -Name DeployLocalTemplate -ResourceGroupName "<YOUR_RESOURCE_GROUP>" -TemplateFile ./cvm-cmk.json  -TemplateParameterFile ./cvm-cmk-params.json -Verbose
+
 Once you've deployed you can install the [simple attestation client](https://github.com/Azure/confidential-computing-cvm-guest-attestation/blob/main/cvm-platform-checker-exe/README.md) install the VC runtime 1st! to see true/false if your VM is protected by Azure Confidential Computing
 
 The WindowsAttest.ps1 script can manually be invoked inside a CVM to do an attestation check against the West Europe shared attestation endpoint
