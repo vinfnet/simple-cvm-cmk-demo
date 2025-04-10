@@ -16,9 +16,12 @@ Note this will deploy an Azure Keyvault *Premium* SKU [pricing](https://azure.mi
 
 By default the script will create a resource in North Europe - adjust the $region parameter in the parameter block at the start for alternative regions - check availability of CVMs in that region 1st
 
------------------------------------------------------------------------------------------------------------
+# ARM Template
+Create a simple CVM with CMK enabled (work-in-progress)
 
-setupcvmAZCLI.ps1 and setupCVMPOSH.ps1 also still work but are less mature than BuildRandomCVM.ps1.
+You'll need to create a disk encryption set and encryption key (use Azure Keyvault Premium) and replace the relevant values in the parameter file.
+
+To deploy from the command line:
 
 Once you've deployed you can install the [simple attestation client](https://github.com/Azure/confidential-computing-cvm-guest-attestation/blob/main/cvm-platform-checker-exe/README.md) install the VC runtime 1st! to see true/false if your VM is protected by Azure Confidential Computing
 
@@ -33,7 +36,6 @@ Running on a CVM (DCa / ECa Series SKU using AMD SEV-SNP hardware)
 NOT running on a CVM (any other Azure SKU)
 >    This VM is NOT an Azure compliant CVM
 
-
 You can download the script to a CVM or execute directly from GitHub from your CVM by pasting the following single line Command in a PowerShell session that is running with Administrative permissions (review the script 1st to ensure you are happy with the binaries and packages it installs or download & customize)
 
 ```
@@ -41,3 +43,7 @@ $ScriptFromGitHub = Invoke-WebRequest -uri https://raw.githubusercontent.com/vin
 ```
 
 For more information on Azure confidential Computing see the [public docs](https//aka.ms/accdocs)
+
+# Older Versions
+
+setupcvmAZCLI.ps1 and setupCVMPOSH.ps1 also still work but are less mature than BuildRandomCVM.ps1.
