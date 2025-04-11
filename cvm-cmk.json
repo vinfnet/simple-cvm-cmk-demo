@@ -112,7 +112,10 @@
             }
           ]
         }
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'myVnet')]"
+      ]
     },
     {
       "type": "Microsoft.Network/networkInterfaces",
@@ -131,7 +134,10 @@
             }
           }
         ]
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'myVnet')]"
+      ]
     },
     {
       "type": "Microsoft.Network/virtualNetworks",
