@@ -29,9 +29,13 @@ To deploy from the command line:
 
 New-AzResourceGroupDeployment -Name DeployLocalTemplate -ResourceGroupName "<YOUR_RESOURCE_GROUP>" -TemplateFile ./cvm-cmk.json  -TemplateParameterFile ./cvm-cmk-params.json -Verbose
 
+# Automated Attestation
+
+[Attestation](https://learn.microsoft.com/en-us/azure/confidential-computing/attestation-solutions) is how you prove you are running on a confidential computing VM based on evidence provided and signed by the CPU and validated by an attestation service.
+
 Once you've deployed you can install the [simple attestation client](https://github.com/Azure/confidential-computing-cvm-guest-attestation/blob/main/cvm-platform-checker-exe/README.md) install the VC runtime 1st! to see true/false if your VM is protected by Azure Confidential Computing
 
-The WindowsAttest.ps1 script can manually be invoked inside a CVM to do an attestation check against the West Europe shared attestation endpoint
+The WindowsAttest.ps1 script can manually be invoked inside a CVM to do an automated attestation check against the West Europe shared attestation endpoint
 
 Expected output:
 
@@ -42,11 +46,17 @@ Running on a CVM (DCa / ECa Series SKU using AMD SEV-SNP hardware)
 NOT running on a CVM (any other Azure SKU)
 >    This VM is NOT an Azure compliant CVM
 
-You can download the script to a CVM or execute directly from GitHub from your CVM by pasting the following single line Command in a PowerShell session that is running with Administrative permissions (review the script 1st to ensure you are happy with the binaries and packages it installs or download & customize)
+![Screenshot of output from attestation script](./AttestationClientScreenshot.png)
+
+
+
+You can download the script to a CVM or execute directly from GitHub >inside< your CVM by pasting the following single line Command in a PowerShell session that is running with Administrative permissions (review the script 1st to ensure you are happy with the binaries and packages it installs or download & customize)
 
 ```
 $ScriptFromGitHub = Invoke-WebRequest -uri https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/refs/heads/main/WindowsAttest.ps1 ; Invoke-Expression $($ScriptFromGitHub.Content)
 ```
+
+
 
 For more information on Azure confidential Computing see the [public docs](https//aka.ms/accdocs)
 
