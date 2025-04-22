@@ -114,7 +114,7 @@ $VirtualMachine = Set-AzVMOperatingSystem -VM $VirtualMachine -Windows -Computer
 #original line was
 #$VirtualMachine = Set-AzVMSourceImage -VM $VirtualMachine -PublisherName 'MicrosoftWindowsServer' -Offer 'windowsserver' -Skus '2022-datacenter-smalldisk-g2' -Version "latest";
 #modified to use the latest SQL Server 2022 image
-$VirtualMachine = Set-AzVMSourceImage -VM $VirtualMachine -PublisherName 'MicrosoftSQLServer' -Offer 'SQL2022-WS-2022' -Skus 'standard-gen2' -Version "latest";        
+$VirtualMachine = Set-AzVMSourceImage -VM $VirtualMachine -PublisherName 'MicrosoftSQLServer' -Offer 'SQL2022-WS2022' -Skus 'standard-gen2' -Version "latest";        
 
 
 $subnet = New-AzVirtualNetworkSubnetConfig -Name ($vmsubnetName) -AddressPrefix "10.0.0.0/24";
