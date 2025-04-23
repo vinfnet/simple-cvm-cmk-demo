@@ -148,12 +148,39 @@ Add-AzVirtualNetworkSubnetConfig -Name "AzureBastionSubnet" -VirtualNetwork $vne
 $publicip = New-AzPublicIpAddress -ResourceGroupName $resgrp -name "VNet1-ip" -location $region -AllocationMethod Static -Sku Standard
 New-AzBastion -ResourceGroupName $resgrp -Name $bastionname -PublicIpAddressRgName $resgrp -PublicIpAddressName $publicIp.Name -VirtualNetworkRgName $resgrp -VirtualNetworkName $vnetname -Sku "Basic"
 
-#---------Do attestation check, kick off a script inside the VM to do the attestation check, note script is pulled from directory where this script is executed from---------
-# Invoke the command on the VM, using the local file
+# Need to reboot the virtual machine to enable the VC Redistributable installation, if we don't do this the installation in the WindowsAttest.ps1 script will fail with code 3010 (reboot required)
+write-host "Virtual machine created, now rebooting the VM to enable the VC Redistributable installation"
+write-host "Note: this will take a few minutes, please wait..."
+write-host "Rebooting the virtual machine..."
+Restart-AzVM -ResourceGroupName $resgrp -Name $vmname 
+
+# Wait for the VM to finish rebooting
+$timeout = (Get-Date).AddMinutes(10) # Set a timeout of 10 minutes
+do {
+    Start-Sleep -Seconds 10
+    try {
+        $vmStatus = (Get-AzVM -ResourceGroupName $resgrp -Name $vmname -Status).Statuses | Where-Object { $_.Code -like "PowerState*" }
+        if ($null -eq $vmStatus) {
+            write-host "Unable to retrieve VM status. Retrying..."
+            continue
+        }
+        write-host "Current VM status: $($vmStatus.DisplayStatus)"
+    } catch {
+        write-host "Error retrieving VM status: $_. Exception.Message"
+        continue
+    }
+    if ((Get-Date) -gt $timeout) {
+        write-host "Timeout reached while waiting for the VM to reboot. Exiting."
+        exit
+    }
+} while ($vmStatus -and $vmStatus.DisplayStatus -ne "VM running")
+
+write-host "Virtual machine has rebooted successfully."
+
+#---------Do attestation check, kick off a script inside the VM to do the attestation check, note script is pulled from GitHub---------
 write-host "Running an attestation check inside the VM, please wait for output..."
-$output = Invoke-AzVMRunCommand -Name $vmname -ResourceGroupName $resgrp -CommandId 'RunPowerShellScript' -ScriptPath .\WindowsAttest.ps1
 write-host "--------------Output from the script that ran inside the VM--------------"
-write-host $output.Value.message # repeat the output from the script that ran inside the VM
+$ScriptContent = Invoke-WebRequest -Uri https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/main/WindowsAttest.ps1 -UseBasicParsing | Select-Object -ExpandProperty Content ; Invoke-AzVMRunCommand -ResourceGroupName $resgrp -VMName $VMName -CommandId "RunPowerShellScript" -ScriptString $ScriptContent
 write-host "----------------------------------------------------------------------------------------------------------------"
 write-host "Build and validation complete, check the output above for the attestation status."
 

@@ -13,14 +13,17 @@ write-output "Installing JWTDetails module"
 install-module -name JWTDetails -Force
 write-output "Downloading attestation client binaries"
 Invoke-WebRequest -uri https://github.com/Azure/confidential-computing-cvm-guest-attestation/raw/main/cvm-platform-checker-exe/Windows/cvm_windows_attestation_client.zip -OutFile windowsattestationclient.zip
-Expand-Archive -Path .\windowsattestationclient.zip -DestinationPath .
+Expand-Archive -Path .\windowsattestationclient.zip -DestinationPath . -force # added -force to overwrite existing files, for example if you run the script multiple times
 cd .\cvm_windows_attestation_client
 
 write-output "Installing VC redistributable"
 $vcProcess = Start-Process -FilePath ".\VC_redist.x64.exe" -ArgumentList "/install /passive /norestart" -Wait -PassThru
 
 # Check the exit code of the process
-if ($vcProcess.ExitCode -ne 0) {
+if ($vcProcess.ExitCode -eq 3010) {
+    Write-Host "VC Redistributable requires a reboot, please reboot the VM and run the script again." -ForegroundColor Yellow
+    exit $vcProcess.ExitCode
+} elseif ($vcProcess.ExitCode -ne 0) {
     Write-Host "Error: VC redistributable installation failed with exit code $($vcProcess.ExitCode)" -ForegroundColor Red
     exit $vcProcess.ExitCode
 } else {

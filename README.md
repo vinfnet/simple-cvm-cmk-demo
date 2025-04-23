@@ -20,6 +20,10 @@ By default the script will create a resource in North Europe - adjust the $regio
 
 There is a similar concept to build an AKS cluster with CMK enabled on the worker nodes.
 
+# SQL Server on Confidential Computing
+
+The BuildRandomSQLCVM.ps1 script builds on the CVM script but deploys the specific SQL image to give you a SQL 2022 build running on Windows Server 2022 [official docs](https://learn.microsoft.com/en-gb/azure/azure-sql/virtual-machines/windows/sql-vm-create-confidential-vm-how-to?view=azuresql)
+
 # ARM Template
 Create a simple CVM with CMK enabled (work-in-progress)
 
@@ -56,9 +60,17 @@ You can download the script to a CVM or execute directly from GitHub >inside< yo
 $ScriptFromGitHub = Invoke-WebRequest -uri https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/refs/heads/main/WindowsAttest.ps1 ; Invoke-Expression $($ScriptFromGitHub.Content)
 ```
 
+If you want to run this command against your CVM >from< your own workstation over the Internet you can use the following 1-line command, edit the <VARIABLES> to match the VM you're targetting.
+
+    $ScriptContent = Invoke-WebRequest -Uri https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/main/WindowsAttest.ps1 -UseBasicParsing | Select-Object -ExpandProperty Content ; Invoke-AzVMRunCommand -ResourceGroupName <YOUR_RESOURCE_GROUP> -VMName <YOUR_VM_NAME> -CommandId "RunPowerShellScript" -ScriptString $ScriptContent
+
 
 
 For more information on Azure confidential Computing see the [public docs](https//aka.ms/accdocs)
+
+# TURBO Charged Versions
+
+Whilst I'll keep adding these scripts as they are useful for step by step learning or exploring one of my colleagues has a turbo-charged version of this script with proper error handing, Managed HSM support and much more - check it out - [GitHub Link](https://github.com/RZomermanMS/CVM)
 
 # Older Versions
 
