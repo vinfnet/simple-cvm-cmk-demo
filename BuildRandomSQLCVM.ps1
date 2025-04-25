@@ -148,42 +148,41 @@ Add-AzVirtualNetworkSubnetConfig -Name "AzureBastionSubnet" -VirtualNetwork $vne
 $publicip = New-AzPublicIpAddress -ResourceGroupName $resgrp -name "VNet1-ip" -location $region -AllocationMethod Static -Sku Standard
 New-AzBastion -ResourceGroupName $resgrp -Name $bastionname -PublicIpAddressRgName $resgrp -PublicIpAddressName $publicIp.Name -VirtualNetworkRgName $resgrp -VirtualNetworkName $vnetname -Sku "Basic"
 
-# Need to reboot the virtual machine to enable the VC Redistributable installation, if we don't do this the installation in the WindowsAttest.ps1 script will fail with code 3010 (reboot required)
-write-host "Virtual machine created, now rebooting the VM to enable the VC Redistributable installation"
-write-host "Note: this will take a few minutes, please wait..."
-write-host "Rebooting the virtual machine..."
-Restart-AzVM -ResourceGroupName $resgrp -Name $vmname 
+write-host "Bastion host created, now restarting the VM"
 
-# Wait for the VM to finish rebooting
-$timeout = (Get-Date).AddMinutes(10) # Set a timeout of 10 minutes
-do {
-    Start-Sleep -Seconds 10
-    try {
-        $vmStatus = (Get-AzVM -ResourceGroupName $resgrp -Name $vmname -Status).Statuses | Where-Object { $_.Code -like "PowerState*" }
-        if ($null -eq $vmStatus) {
-            write-host "Unable to retrieve VM status. Retrying..."
-            continue
-        }
-        write-host "Current VM status: $($vmStatus.DisplayStatus)"
-    } catch {
-        write-host "Error retrieving VM status: $_. Exception.Message"
-        continue
-    }
-    if ((Get-Date) -gt $timeout) {
-        write-host "Timeout reached while waiting for the VM to reboot. Exiting."
-        exit
-    }
-} while ($vmStatus -and $vmStatus.DisplayStatus -ne "VM running")
-
-write-host "Virtual machine has rebooted successfully."
-
+<# cannot get this to execute as part of the scrit, so commented out for now - wil revisit - works if you manually execute the code blocks against the VM
+problem is due to the reboot supression when installing the VC Redist package
+# There is some weirdness with running the attestation script with this image, not got to the bottom of it yet, it's ugly but it works
+Restart-AzVM -ResourceGroupName $resgrp -Name $vmname
+write-host "waiting for VM to settle down, please wait..."
+start-sleep -Seconds 120 # give the VM time to start
 #---------Do attestation check, kick off a script inside the VM to do the attestation check, note script is pulled from GitHub---------
 write-host "Running an attestation check inside the VM, please wait for output..."
 write-host "--------------Output from the script that ran inside the VM--------------"
-$ScriptContent = Invoke-WebRequest -Uri https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/main/WindowsAttest.ps1 -UseBasicParsing | Select-Object -ExpandProperty Content ; Invoke-AzVMRunCommand -ResourceGroupName $resgrp -VMName $VMName -CommandId "RunPowerShellScript" -ScriptString $ScriptContent
+write-host "running on " $vmname " in " $resgrp
+
+# Read the script content from GitHub (same repo as this script)
+$ScriptUrl = "https://raw.githubusercontent.com/vinfnet/simple-cvm-cmk-demo/main/WindowsAttest.ps1"
+$ScriptContent = Invoke-WebRequest -Uri $ScriptUrl -UseBasicParsing | Select-Object -ExpandProperty Content
+
+# Execute the script INSIDE the Azure CVM using PowerShell triggered from your local machine and ignore the output
+$nothing = Invoke-AzVMRunCommand -ResourceGroupName $resgrp `
+    -VMName $VMName `
+    -CommandId "RunPowerShellScript" `
+    -ScriptString $ScriptContent > $null
+    
+start-sleep -Seconds 300 # give the VM time to start
+# Execute the script INSIDE the Azure CVM using PowerShell triggered from your local machine
+$result = Invoke-AzVMRunCommand -ResourceGroupName $resgrp `
+    -VMName $VMName `
+    -CommandId "RunPowerShellScript" `
+    -ScriptString $ScriptContent
+write-host $result.Value[0].Message
+
 write-host "----------------------------------------------------------------------------------------------------------------"
 write-host "Build and validation complete, check the output above for the attestation status."
 
+#>
 #optional - uncomment the following if you want to automatically remove the VM after the attestation check
 #get-azresourceGroup -name $resgrp | Remove-AzResourceGroup   
 
