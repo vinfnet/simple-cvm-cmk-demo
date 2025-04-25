@@ -1,6 +1,6 @@
 # Hands-off script to build a windows CVM and then make it do attestation by automating an attestation process /inside/ the VM
 # VM will be created in a private vnet with no public IP and can only be accessed over the Internet via the Azure Bastion service
-# Feb 2024 - ported to all native PowerShell code and re-implemented Azure Bastion code and added command line parameters rather than editing file
+# April 2025 - ported to all native PowerShell code and re-implemented Azure Bastion code and added command line parameters rather than editing file
 # Tested on MacOS (PWSH 7.5) & Windows (7.4.6)
 # 
 # Simon Gallagher, ACC Product Group
